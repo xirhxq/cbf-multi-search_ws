@@ -7,7 +7,7 @@
 #define Y_KP KP
 #define Z_KP KP
 #define YAW_KP 1.0
-#define UWB_INSTEAD_VO
+// #define UWB_INSTEAD_VO
 //#define GPS_HEIGHT
 
 ros::Publisher ctrl_cmd_pub;

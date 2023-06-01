@@ -45,9 +45,9 @@ void StepTakeoff() {
     M210_position_yaw_rate_ctrl(0, 0, expected_height, 0);
     if (MyMathFun::nearly_is(current_pos_raw.z, expected_height, 0.2)){
         // ROS_INFO("Arrive expected height @ %.2lf", expected_height);
-        // toStepSearch();
+        toStepSearch();
         // toStepAscend();
-        toStepHold();
+        // toStepHold();
     }
 }
 
@@ -67,7 +67,6 @@ void StepSearch() {
     geometry_msgs::Vector3 desired_point;
     MyDataFun::set_value(desired_point, search_tra[search_tra_cnt]);
     ROS_INFO("Go to %s(%ld th)", MyDataFun::output_str(desired_point).c_str(), search_tra_cnt);
-    // UAV_Control_to_Point_facing_it(desired_point);
     UAV_Control_to_Point_with_yaw(desired_point, yaw_offset);
     if (is_near(desired_point, tol)){
         search_tra_cnt++;
@@ -190,11 +189,11 @@ int main(int argc, char** argv) {
     ROS_INFO("Position offset: %s", MyDataFun::output_str(position_offset).c_str());
    
     double y_dir;
-    if (uav_name == "suav_1") y_dir = -3.0;
-    else if (uav_name == "suav_2") y_dir = 3.0; 
-    search_tra.push_back(compensate_offset(MyDataFun::new_point(10.0, 0.0, 2.0)));
-    search_tra.push_back(compensate_offset(MyDataFun::new_point(10.0, y_dir, 2.0)));
-    search_tra.push_back(compensate_offset(MyDataFun::new_point(0.0, y_dir, 2.0)));
+    if (uav_name == "suav_1") y_dir = -1.0;
+    else if (uav_name == "suav_2") y_dir = 1.0; 
+    search_tra.push_back(compensate_offset(MyDataFun::new_point(2, 0.0, 2.0)));
+    search_tra.push_back(compensate_offset(MyDataFun::new_point(2, y_dir, 2.0)));
+    search_tra.push_back(compensate_offset(MyDataFun::new_point(2, y_dir, 2.0)));
     search_tra.push_back(compensate_offset(MyDataFun::new_point(0.0, 0.0, 2.0)));
 
     ROS_INFO("Search Trajectory:");
@@ -214,14 +213,6 @@ int main(int argc, char** argv) {
             return 0;
         }
     }
-
-    ROS_INFO("Reset Gimbal");
-    send_gimbal_angle_ctrl_cmd(0, 0, 0);
-    sleep(2);
-
-    ROS_INFO("Set Gimbal");
-    send_gimbal_angle_ctrl_cmd(0, -30, 0);
-    sleep(2);
 
     
     // if (!set_local_position()){
