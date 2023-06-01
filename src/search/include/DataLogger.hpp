@@ -59,6 +59,19 @@
             logger.newline();
         }
     }
+    
+    --- Output ---
+    Year, Month, Day, Hour, Minute, Second, Millisecond, var1, var2, a[0][0], a[0][1], a[1][0], a[1][1], a[2][0], a[2][1], b[0][0], b[1][0], b[2][0], c[0][0], c[1][0], c[2][0], point.x, point.y, point.z, anotherPoint.x, anotherPoint.y, anotherPoint.z
+    2023, 06, 02, 00, 10, 49, 093, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -0, -0, -0
+    2023, 06, 02, 00, 10, 49, 093, 1, 3.14159, 1, 2, 3, 4, 5, 6, 10, 20, 30, 100, 200, 300, 1, 2, 3, -1, -2, -3
+    2023, 06, 02, 00, 10, 49, 093, 2, 6.28319, 2, 4, 6, 8, 10, 12, 20, 40, 60, 200, 400, 600, 2, 4, 6, -2, -4, -6
+    2023, 06, 02, 00, 10, 49, 093, 3, 9.42478, 3, 6, 9, 12, 15, 18, 30, 60, 90, 300, 600, 900, 3, 6, 9, -3, -6, -9
+    2023, 06, 02, 00, 10, 49, 093, 4, 12.5664, 4, 8, 12, 16, 20, 24, 40, 80, 120, 400, 800, 1200, 4, 8, 12, -4, -8, -12
+    2023, 06, 02, 00, 10, 49, 093, 5, 15.708, 5, 10, 15, 20, 25, 30, 50, 100, 150, 500, 1000, 1500, 5, 10, 15, -5, -10, -15
+    2023, 06, 02, 00, 10, 49, 093, 6, 18.8496, 6, 12, 18, 24, 30, 36, 60, 120, 180, 600, 1200, 1800, 6, 12, 18, -6, -12, -18
+    2023, 06, 02, 00, 10, 49, 093, 7, 21.9911, 7, 14, 21, 28, 35, 42, 70, 140, 210, 700, 1400, 2100, 7, 14, 21, -7, -14, -21
+    2023, 06, 02, 00, 10, 49, 093, 8, 25.1327, 8, 16, 24, 32, 40, 48, 80, 160, 240, 800, 1600, 2400, 8, 16, 24, -8, -16, -24
+    2023, 06, 02, 00, 10, 49, 093, 9, 28.2743, 9, 18, 27, 36, 45, 54, 90, 180, 270, 900, 1800, 2700, 9, 18, 27, -9, -18, -27
 
 */
 
@@ -87,7 +100,7 @@ struct is_eigen_matrix<Eigen::Matrix<T, R, C>> : std::true_type {};
 class DataLogger {
 public:
     DataLogger(const std::string &filename) :
-            filename_(std::string(ROOT_DIR) + getCurrentTimestamp('-') + "_" + filename),
+            filename_(std::string(ROOT_DIR) + getCurrentTimestamp("-") + "_" + filename),
             initialized_(false) {
         file_.open(filename_);
         while (!file_.is_open()) {
@@ -146,9 +159,9 @@ public:
                 }
             }
 
-            file_ << getCurrentTimestamp();
+            file_ << getCurrentTimestamp(", ");
             for (size_t i = 0; i < values_.size(); ++i) {
-                file_ << "," << values_[i];
+                file_ << ", " << values_[i];
                 valueUpdated_[i] = false;
             }
             file_ << std::endl;
@@ -156,7 +169,7 @@ public:
         }
     }
 
-    std::string getCurrentTimestamp(char sep = ',') {
+    std::string getCurrentTimestamp(std::string sep=",") {
         auto now = std::chrono::system_clock::now();
         auto now_ms = std::chrono::time_point_cast<std::chrono::milliseconds>(now);
         auto now_time = std::chrono::system_clock::to_time_t(now);
