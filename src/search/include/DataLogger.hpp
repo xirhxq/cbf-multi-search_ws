@@ -34,6 +34,14 @@
 #include <iomanip>
 #include <thread>
 #include <sstream>
+#include <type_traits>
+#include "Eigen/Core"
+
+template<typename T>
+struct is_eigen_type : std::false_type {};
+
+template<typename T>
+struct is_eigen_type<Eigen::MatrixBase<Derived> > : std::true_type {};
 
 class DataLogger {
 public:
@@ -52,16 +60,15 @@ public:
         }
     }
 
-    void initialize(const std::vector<std::string> &variableNames) {
+    void initialize(const std::vector<std::pair<std::string, std::string>> &variableInfo) {
         if (!initialized_) {
             initialized_ = true;
-            variableNames_ = variableNames;
-
-            file_ << "Year, Month, Day, Hour, Minute, Second, Millisecond";
-            for (const auto &name: variableNames_) {
-                file_ << ", " << name;
+            for (const auto &info: variableInfo) {
+                const std::string &variableName = info.first;
+                const std::string &variableType = info.second;
+                parseVariableName(variableName, variableType);
             }
-            file_ << std::endl;
+            writeHeader();
 
             valueUpdated_.resize(variableNames_.size(), false);
             values_.resize(variableNames_.size());
@@ -71,16 +78,14 @@ public:
     template<typename T>
     void log(const std::string &variableName, const T &value) {
         if (file_.is_open() && initialized_) {
-            auto it = std::find(variableNames_.begin(), variableNames_.end(), variableName);
-            if (it != variableNames_.end()) {
-                size_t index = std::distance(variableNames_.begin(), it);
-
-                std::stringstream ss;
-                ss << std::setw(6) << value;
-                values_[index] = ss.str();
-                valueUpdated_[index] = true;
-            } else {
-                std::cerr << "Couldn't find var: " << variableName << std::endl;
+            if (is_eigen_type<T>::value) {
+                parseEigenMatrixValue(variableName, value);
+            }
+            else if (std::is_same<T, int>::value || std::is_same<T, double>::value || std::is_same<T, float>::value){
+                parseVariableValue(variableName, value);
+            }
+            else {
+                parsePointValue(variableName, value);
             }
         }
     }
@@ -129,6 +134,95 @@ private:
     std::vector<std::string> variableNames_;
     std::vector<std::string> values_;
     std::vector<bool> valueUpdated_;
+    std::map<std::string, std::string> nameTypeMap;
+
+    int findIndex(const std::string &variableName){
+        auto it = std::find(variableNames_.begin(), variableNames_.end(), variableName);
+        if (it != variableNames_.end()) {
+            size_t index = std::distance(variableNames_.begin(), it);
+            return index;
+        } else {
+            std::cerr << "Couldn't find var: " << variableName << std::endl;
+            return -1;
+        }
+    }
+
+    void parseVariableName(const std::string &variableName, const std::string &variableType) {
+        if (variableType == "int" || variableType == "double") {
+            nameTypeMap[variableName] = variableType;
+            variableNames_.push_back(variableName);
+        } else if (variableType == "EigenMatrix") {
+            std::string name = variableName.substr(0, variableName.find_first_of('['));
+            nameTypeMap[name] = variableType;
+            std::string rows = variableName.substr(
+                    variableName.find_first_of('[') + 1,
+                    variableName.find_first_of(']') - variableName.find_first_of('[') - 1
+            );
+            std::string cols = variableName.substr(
+                    variableName.find_last_of('[') + 1,
+                    variableName.find_last_of(']') - variableName.find_last_of('[') - 1
+            );
+            int numRows = std::stoi(rows);
+            int numCols = std::stoi(cols);
+
+            for (int i = 0; i < numRows; ++i) {
+                for (int j = 0; j < numCols; ++j) {
+                    std::string varName = name + "[" + std::to_string(i) + "][" + std::to_string(j) + "]";
+                    variableNames_.push_back(varName);
+                }
+            }
+        } else if (variableType == "Point" || variableType == "point") {
+            nameTypeMap[variableName] = variableType;
+            variableNames_.push_back(variableName + ".x");
+            variableNames_.push_back(variableName + ".y");
+            variableNames_.push_back(variableName + ".z");
+        }
+    }
+
+    template<typename T>
+    std::string getValStr(const T &value) {
+        std::stringstream ss;
+        ss << std::setw(6) << value;
+        return ss.str();
+    }
+
+    void updateValue(const int& ind, const std::string &varValueStr) {
+        values_[ind] = varValueStr;
+        valueUpdated_[ind] = true;
+    }
+
+    template<typename T>
+    void parsePointValue(const std::string &variableName, const T &value) {
+        updateValue(findIndex(variableName + ".x"), getValStr(value.x));
+        updateValue(findIndex(variableName + ".y"), getValStr(value.y));
+        updateValue(findIndex(variableName + ".z"), getValStr(value.z));
+    }
+
+    template<typename T>
+    void parseVariableValue(const std::string &variableName, const T &value) {
+        int index = findIndex(variableName);
+        updateValue(index, getValStr(value));
+    }
+
+    template<typename T>
+    void parseEigenMatrixValue(const std::string &variableName, const T &matrix) {
+        for (int i = 0; i < matrix.rows(); ++i) {
+            for (int j = 0; j < matrix.cols(); ++j) {
+                int index = findIndex(
+                    variableName + "[" + std::to_string(i) + "][" + std::to_string(j) + "]"
+                );
+                updateValue(index, getValStr(matrix(i, j)));
+            }
+        }
+    }
+
+    void writeHeader() {
+        file_ << "Year, Month, Day, Hour, Minute, Second, Millisecond";
+        for (const auto &name: variableNames_) {
+            file_ << ", " << name;
+        }
+        file_ << std::endl;
+    }
 };
 
 #endif

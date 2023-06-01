@@ -133,12 +133,10 @@ int main(int argc, char** argv) {
     ros::init(argc, argv, "mbzirc_demo_search", ros::init_options::AnonymousName);
     ros::NodeHandle nh;
 
-    std::vector<std::string> vn = {
-        "ros_time",
-        "state",
-        "pos.x",
-        "pos.y",
-        "pos.z"
+    std::vector<std::pair<std::string, std::string> > vn = {
+        {"ros_time", "double"},
+        {"state", "int"},
+        {"pos", "Point"},
     };
     dl.initialize(vn);
     
@@ -266,9 +264,7 @@ int main(int argc, char** argv) {
 
         dl.log("ros_time", get_time_now());
         dl.log("state", task_state);
-        dl.log("pos.x", current_pos_raw.x);
-        dl.log("pos.y", current_pos_raw.y);
-        dl.log("pos.z", current_pos_raw.z);
+        dl.log("pos", current_pos_raw);
         dl.newline();
         
         ros::spinOnce();
