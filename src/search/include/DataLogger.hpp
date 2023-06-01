@@ -1,21 +1,61 @@
-/* 
+/*
   --- Requirements ---
     need add_definitions(-DROOT_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/data\") in CMakeFiles.txt
 
   --- Example ---
     #include "DataLogger.hpp"
+    #include "Eigen/Core"
+
+    struct Point {
+        double x;
+        double y;
+        double z;
+    };
+
+    struct AnotherPoint {
+        double x;
+        double y;
+        double z;
+    };
 
     int main() {
-        DataLogger logger("xxx.csv");
-        std::vector<std::string> variableNames = {"Var 1", "Var 2"};
-        logger.initialize(variableNames);
-    
-        for (int i = 0;; ++i) {
-            int var1 = i * 3;
-            double var2 = 3.1415926 * i;
+        Eigen::MatrixXd a(3, 2);
+        Eigen::VectorXd b(3);
+        Eigen::VectorXi c(3);
 
-            logger.log("Var 2", var2);
-            logger.log("Var 1", var1);
+        DataLogger logger("data.csv");
+
+        std::vector<std::pair<std::string, std::string>> variableInfo;
+        variableInfo.emplace_back("var1", "int");
+        variableInfo.emplace_back("var2", "double");
+        variableInfo.emplace_back("a[3][2]", "EigenMatrix");
+        variableInfo.emplace_back("b[3][1]", "EigenVector");
+        variableInfo.emplace_back("c[" + std::to_string(c.rows()) + "][" + std::to_string(c.cols()) + "]", "EigenVector");
+        variableInfo.emplace_back("point", "Point");
+        variableInfo.emplace_back("anotherPoint", "Point");
+
+        logger.initialize(variableInfo);
+
+        for (int i = 0; i < 10; ++i) {
+            int var1 = i;
+            double var2 = 3.14 * i;
+            Point point{1.0 * i, 2.0 * i, 3.0 * i};
+            AnotherPoint anotherPoint{-1.0 * i, -2.0 * i, -3.0 * i};
+            a << 1 * i, 2 * i, 3 * i, 4 * i, 5 * i, 6 * i;
+            b << 10 * i, 20 * i, 30 * i;
+            c << 100 * i, 200 * i, 300 * i;
+
+            logger.log("var1", var1);
+            logger.log("var2", var2);
+
+            // can log Eigen::Matrix, Eigen::Vector for any size, any type(double, int, float)
+            logger.log("a", a);
+            logger.log("b", b);
+            logger.log("c", c);
+
+            // log function can be used not by the order of variableInfo
+            logger.log("anotherPoint", anotherPoint);
+            logger.log("point", point);
             logger.newline();
         }
     }
@@ -35,13 +75,14 @@
 #include <thread>
 #include <sstream>
 #include <type_traits>
+#include <map>
 #include "Eigen/Core"
 
-template<typename T>
-struct is_eigen_type : std::false_type {};
+template <typename T>
+struct is_eigen_matrix : std::false_type {};
 
-template<typename T>
-struct is_eigen_type<Eigen::MatrixBase<Derived> > : std::true_type {};
+template <typename T, int R, int C>
+struct is_eigen_matrix<Eigen::Matrix<T, R, C>> : std::true_type {};
 
 class DataLogger {
 public:
@@ -76,19 +117,25 @@ public:
     }
 
     template<typename T>
-    void log(const std::string &variableName, const T &value) {
-        if (file_.is_open() && initialized_) {
-            if (is_eigen_type<T>::value) {
-                parseEigenMatrixValue(variableName, value);
-            }
-            else if (std::is_same<T, int>::value || std::is_same<T, double>::value || std::is_same<T, float>::value){
-                parseVariableValue(variableName, value);
-            }
-            else {
-                parsePointValue(variableName, value);
-            }
-        }
+    typename std::enable_if<is_eigen_matrix<T>::value>::type
+    log(const std::string &variableName, const T &value) {
+        parseEigenMatrixValue(variableName, value);
     }
+
+    template<typename T>
+    typename std::enable_if<!is_eigen_matrix<T>::value &&
+                            std::is_arithmetic<T>::value>::type
+    log(const std::string &variableName, const T &value) {
+        parseVariableValue(variableName, value);
+    }
+
+    template<typename T>
+    typename std::enable_if<!is_eigen_matrix<T>::value &&
+                            !std::is_arithmetic<T>::value>::type
+    log(const std::string &variableName, const T &value) {
+        parsePointValue(variableName, value);
+    }
+
 
     void newline() {
         if (file_.is_open() && initialized_) {
@@ -136,7 +183,7 @@ private:
     std::vector<bool> valueUpdated_;
     std::map<std::string, std::string> nameTypeMap;
 
-    int findIndex(const std::string &variableName){
+    int findIndex(const std::string &variableName) {
         auto it = std::find(variableNames_.begin(), variableNames_.end(), variableName);
         if (it != variableNames_.end()) {
             size_t index = std::distance(variableNames_.begin(), it);
@@ -151,7 +198,7 @@ private:
         if (variableType == "int" || variableType == "double") {
             nameTypeMap[variableName] = variableType;
             variableNames_.push_back(variableName);
-        } else if (variableType == "EigenMatrix") {
+        } else if (variableType == "EigenMatrix" || variableType == "EigenVector") {
             std::string name = variableName.substr(0, variableName.find_first_of('['));
             nameTypeMap[name] = variableType;
             std::string rows = variableName.substr(
@@ -182,11 +229,11 @@ private:
     template<typename T>
     std::string getValStr(const T &value) {
         std::stringstream ss;
-        ss << std::setw(6) << value;
+        ss << value;
         return ss.str();
     }
 
-    void updateValue(const int& ind, const std::string &varValueStr) {
+    void updateValue(const int &ind, const std::string &varValueStr) {
         values_[ind] = varValueStr;
         valueUpdated_[ind] = true;
     }
@@ -209,7 +256,7 @@ private:
         for (int i = 0; i < matrix.rows(); ++i) {
             for (int j = 0; j < matrix.cols(); ++j) {
                 int index = findIndex(
-                    variableName + "[" + std::to_string(i) + "][" + std::to_string(j) + "]"
+                        variableName + "[" + std::to_string(i) + "][" + std::to_string(j) + "]"
                 );
                 updateValue(index, getValStr(matrix(i, j)));
             }
