@@ -2,6 +2,7 @@
 #include "MyDataFun.h"
 #include "MyMathFun.h"
 #include "FlightControl.hpp"
+#include "DataLogger.hpp"
 #define CAMERA_ANGLE 30
 // #define ON_GROUND_TEST
 
@@ -13,6 +14,7 @@ ControlState task_state;
 vector<geometry_msgs::Vector3> search_tra;
 size_t search_tra_cnt;
 double hold_begin_time, ascend_begin_time;
+DataLogger dl("search.csv");
 
 
 void toStepTakeoff(){
@@ -131,6 +133,14 @@ int main(int argc, char** argv) {
     ros::init(argc, argv, "mbzirc_demo_search", ros::init_options::AnonymousName);
     ros::NodeHandle nh;
 
+    std::vector<std::string> vn = {
+        "ros_time",
+        "state",
+        "pos.x",
+        "pos.y",
+        "pos.z"
+    };
+    dl.initialize(vn);
     
 	string uav_name = "none";
 	if (argc > 1) {
@@ -253,6 +263,13 @@ int main(int argc, char** argv) {
             ControlStateMachine();
         }
     #endif
+
+        dl.log("ros_time", get_time_now());
+        dl.log("state", task_state);
+        dl.log("pos.x", current_pos_raw.x);
+        dl.log("pos.y", current_pos_raw.y);
+        dl.log("pos.z", current_pos_raw.z);
+        dl.newline();
         
         ros::spinOnce();
         rate.sleep();

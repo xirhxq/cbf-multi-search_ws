@@ -1,3 +1,30 @@
+/* 
+  --- Requirements ---
+    need add_definitions(-DROOT_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/data\") in CMakeFiles.txt
+
+  --- Example ---
+    #include "DataLogger.hpp"
+
+    int main() {
+        DataLogger logger("xxx.csv");
+        std::vector<std::string> variableNames = {"Var 1", "Var 2"};
+        logger.initialize(variableNames);
+    
+        for (int i = 0;; ++i) {
+            int var1 = i * 3;
+            double var2 = 3.1415926 * i;
+
+            logger.log("Var 2", var2);
+            logger.log("Var 1", var1);
+            logger.newline();
+        }
+    }
+
+*/
+
+#ifndef DATALOGGER
+#define DATALOGGER
+
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -10,13 +37,12 @@
 
 class DataLogger {
 public:
-    // need add_definitions(-DROOT_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/\") in CMakeFiles.txt
     DataLogger(const std::string &filename) :
             filename_(std::string(ROOT_DIR) + getCurrentTimestamp('-') + "_" + filename),
             initialized_(false) {
         file_.open(filename_);
         while (!file_.is_open()) {
-            std::cerr << "Couldn't open file：" << filename_ << std::endl;
+            std::cerr << "Couldn't open file: " << filename_ << std::endl;
         }
     }
 
@@ -54,7 +80,7 @@ public:
                 values_[index] = ss.str();
                 valueUpdated_[index] = true;
             } else {
-                std::cerr << "Couldn't find var：" << variableName << std::endl;
+                std::cerr << "Couldn't find var: " << variableName << std::endl;
             }
         }
     }
@@ -105,23 +131,4 @@ private:
     std::vector<bool> valueUpdated_;
 };
 
-int main() {
-    DataLogger logger("data_log.csv");
-
-    std::vector<std::string> variableNames = {"Variable 1", "Variable 2"};
-    logger.initialize(variableNames);
-
-
-    for (int i = 0; i < 2000; ++i) {
-        int var1 = i * 3;
-        double var2 = 3.1415926 * i;
-
-        logger.log("Variable 2", var2);
-        logger.log("Variable 1", var1);
-        logger.newline();
-
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    }
-
-    return 0;
-}
+#endif

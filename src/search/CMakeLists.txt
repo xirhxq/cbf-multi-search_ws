@@ -20,9 +20,12 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
 )
 
+add_definitions(-DROOT_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/data/\")
+
 FILE(GLOB SRCS src/*.cpp)
 foreach (src ${SRCS})
     message(${src})
+    message("-------------------")
     get_filename_component(name ${src} NAME_WE)
 
     add_executable(${name} ${src})
