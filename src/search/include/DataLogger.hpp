@@ -1,6 +1,7 @@
 /*
   --- Requirements ---
-    need add_definitions(-DROOT_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/data\") in CMakeFiles.txt
+    - add 'add_definitions(-DROOT_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/data\")' in CMakeFiles.txt
+    - add 'data' directory in ros package directory
 
 
   --- Example ---
