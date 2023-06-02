@@ -135,7 +135,7 @@ int main(int argc, char** argv) {
 
     std::vector<std::pair<std::string, std::string> > vn = {
         {"ros_time", "double"},
-        {"state", "int"},
+        {"state", "enum"},
         {"pos", "Point"},
     };
     dl.initialize(vn);
@@ -199,9 +199,9 @@ int main(int argc, char** argv) {
     double y_dir;
     if (uav_name == "suav_1") y_dir = -1.0;
     else if (uav_name == "suav_2") y_dir = 1.0; 
-    search_tra.push_back(compensate_offset(MyDataFun::new_point(2, 0.0, 2.0)));
-    search_tra.push_back(compensate_offset(MyDataFun::new_point(2, y_dir, 2.0)));
-    search_tra.push_back(compensate_offset(MyDataFun::new_point(2, y_dir, 2.0)));
+    search_tra.push_back(compensate_offset(MyDataFun::new_point(1, 0.0, 2.0)));
+    search_tra.push_back(compensate_offset(MyDataFun::new_point(1, y_dir, 2.0)));
+    search_tra.push_back(compensate_offset(MyDataFun::new_point(0, y_dir, 2.0)));
     search_tra.push_back(compensate_offset(MyDataFun::new_point(0.0, 0.0, 2.0)));
 
     ROS_INFO("Search Trajectory:");
