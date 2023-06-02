@@ -2,6 +2,7 @@
   --- Requirements ---
     need add_definitions(-DROOT_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/data\") in CMakeFiles.txt
 
+
   --- Example ---
     #include "DataLogger.hpp"
     #include "Eigen/Core"
@@ -18,6 +19,9 @@
         double z;
     };
 
+    typedef enum {AA, BB, CC, DD, EE} E;
+    E e = EE;
+
     int main() {
         Eigen::MatrixXd a(3, 2);
         Eigen::VectorXd b(3);
@@ -30,6 +34,7 @@
         // for primitive type
         variableInfo.emplace_back("var1", "int");
         variableInfo.emplace_back("var2", "double");
+        variableInfo.emplace_back("state", "enum");
 
         // for eigen matrix or vector you should specify the size
         variableInfo.emplace_back("a[3][2]", "EigenMatrix");
@@ -59,6 +64,7 @@
 
             logger.log("var1", var1);
             logger.log("var2", var2);
+            logger.log("state", e);
 
             // can log Eigen::Matrix, Eigen::Vector for any size, any type(double, int, float)
             logger.log("a", a);
@@ -149,7 +155,8 @@ public:
     }
 
     template<typename T>
-    typename std::enable_if<std::is_arithmetic<T>::value>::type
+    typename std::enable_if<std::is_arithmetic<T>::value ||
+                            std::is_enum<T>::value>::type
     log(const std::string &variableName, const T &value) {
         parseVariableValue(variableName, value);
     }
@@ -157,6 +164,7 @@ public:
     template<typename T>
     typename std::enable_if<!is_eigen_matrix<T>::value &&
                             !std::is_arithmetic<T>::value &&
+                            !std::is_enum<T>::value &&
                             !std::is_array<T>::value>::type
     log(const std::string &variableName, const T &value) {
         parsePointValue(variableName, value);
@@ -227,7 +235,7 @@ private:
     }
 
     void parseVariableName(const std::string &variableName, const std::string &variableType) {
-        if (variableType == "int" || variableType == "double") {
+        if (variableType == "int" || variableType == "double" || variableType == "enum") {
             nameTypeMap[variableName] = variableType;
             variableNames_.push_back(variableName);
         } else if (variableType.find("Eigen") != std::string::npos ||
