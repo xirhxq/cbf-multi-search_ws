@@ -114,6 +114,15 @@ namespace MyDataFun{
     }
 
     template<typename T>
+    T interpolate(T a, T b, double ratio) {
+        T res = a;
+        res.x = a.x + (b.x - a.x) * ratio;
+        res.y = a.y + (b.y - a.y) * ratio;
+        res.z = a.z + (b.z - a.z) * ratio;
+        return res;
+    }
+
+    template<typename T>
     double norm(T a){
         return std::sqrt(a.x * a.x + a.y * a.y + a.z * a.z);
     }
