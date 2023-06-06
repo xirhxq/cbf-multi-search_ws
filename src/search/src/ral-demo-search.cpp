@@ -8,12 +8,15 @@
 using namespace dji_osdk_ros;
 using namespace std;
 
-typedef enum { TAKEOFF, ASCEND, SEARCH, HOLD, BACK, LAND, END } ControlState;
+typedef enum { TAKEOFF, ASCEND, SEARCH, TRACK, HOLD, BACK, LAND, END } ControlState;
 ControlState task_state;
 vector<geometry_msgs::Vector3> search_tra;
 size_t search_tra_cnt;
 double hold_begin_time, ascend_begin_time;
 double task_begin_time, task_time;
+double track_begin_time, track_time;
+int track_tra_cnt;
+Point desired_point;
 
 
 void toStepTakeoff(){
@@ -21,9 +24,15 @@ void toStepTakeoff(){
     task_begin_time = get_time_now();
 }
 
-void toStepAscend(){
+void toStepAscend() {
     ascend_begin_time = get_time_now();
     task_state = ASCEND;
+}
+
+void toStepTrack() {
+    track_begin_time = get_time_now();
+    track_tra_cnt = 0;
+    task_state = TRACK;
 }
 
 void toStepSearch(){
@@ -51,7 +60,7 @@ void StepTakeoff() {
     M210_position_yaw_rate_ctrl(0, 0, expected_height, 0);
     if (MyMathFun::nearly_is(current_pos_raw.z, expected_height, 0.2)){
         // ROS_INFO("Arrive expected height @ %.2lf", expected_height);
-        toStepSearch();
+        toStepTrack();
         // toStepAscend();
         // toStepHold();
     }
@@ -67,10 +76,49 @@ void StepAscend(){
     }
 }
 
+void StepTrack() {
+    ROS_INFO("###----StepTrack----###");
+    track_time = get_time_now() - track_begin_time;
+    int sz = tracking_tra.size();
+    while (track_tra_cnt < sz && tracking_tra[track_tra_cnt].first < track_time) {
+        track_tra_cnt++;
+    }
+    if (track_tra_cnt == sz || track_time >= tracking_tra[sz - 1].first) {
+        toStepHold();
+        return;
+    }
+
+    Point pre_point, nxt_point;
+    double pre_time, nxt_time;
+    if (track_tra_cnt == 0) {
+        pre_point = current_pos_raw;
+        pre_time = 0.0;
+    } else {
+        pre_point = tracking_tra[track_tra_cnt - 1].second;
+        pre_time = tracking_tra[track_tra_cnt - 1].first;
+    }
+    nxt_point = tracking_tra[track_tra_cnt].second;
+    nxt_time = tracking_tra[track_tra_cnt].first;
+    double ratio = (track_time - pre_time) / (nxt_time - pre_time);
+    desired_point = MyDataFun::interpolate(pre_point, nxt_point, ratio);
+    ROS_INFO("%s <------ %s ------> %s", 
+        MyDataFun::output_str(pre_point).c_str(), 
+        MyDataFun::output_str(desired_point).c_str(), 
+        MyDataFun::output_str(nxt_point).c_str()
+    );
+    ROS_INFO("%.2lf <------ %.2lf ------> %.2lf\n", 
+        pre_time, 
+        track_time, 
+        nxt_time
+    );
+    
+    ROS_INFO("Go to %s(%ld th)", MyDataFun::output_str(desired_point).c_str(), track_tra_cnt);
+    UAV_Control_to_Point_with_yaw(desired_point, yaw_offset);
+}
+
 void StepSearch() {
     ROS_INFO("###----StepSearch(Ground)----###");
     double tol = 0.3;
-    geometry_msgs::Vector3 desired_point;
     MyDataFun::set_value(desired_point, search_tra[search_tra_cnt]);
     ROS_INFO("Go to %s(%ld th)", MyDataFun::output_str(desired_point).c_str(), search_tra_cnt);
     UAV_Control_to_Point_with_yaw(desired_point, yaw_offset);
@@ -113,6 +161,10 @@ void ControlStateMachine() {
             StepTakeoff();
             break;
         }
+        case TRACK: {
+            StepTrack();
+            break;
+        }
         case SEARCH: {
             StepSearch();
             break;
@@ -133,6 +185,22 @@ void ControlStateMachine() {
             break;
         }
     }
+}
+
+std::vector<std::pair<double, Point>> tracking_tra;
+bool load_search_tra(std::string name) {
+    std::ifstream fin(std::string(ROOT_DIR) + "/config/online_tra" + name + ".txt");
+    if (!fin.is_open()) {
+        ROS_ERROR("Cannot open search_tra.txt");
+        return false;
+    }
+    double t, x, y, z;
+    while (fin >> t >> x >> y >> z) {
+        tracking_tra.push_back(std::make_pair(t, Point(x, y, z)));
+    }
+    fin.close();
+    ROS_INFO("Load search_tra.txt successfully");
+    return true;
 }
 
 int main(int argc, char** argv) {
@@ -164,6 +232,10 @@ int main(int argc, char** argv) {
         ROS_ERROR("Invalid vehicle name: %s", uav_name.c_str());
     }
 	ROS_INFO("Vehicle name: %s", uav_name.c_str());
+
+    if (!load_search_tra(uav_name)) {
+        return 0;
+    }
 
     ros::Subscriber attitudeSub =
         nh.subscribe(uav_name + "/dji_osdk_ros/attitude", 10, &attitude_callback);
@@ -222,11 +294,8 @@ int main(int argc, char** argv) {
     for (auto a: search_tra){
         ROS_INFO("%s", MyDataFun::output_str(a).c_str());
     }
-#ifdef GPS_HEIGHT
-    ROS_INFO("Use GPS for height");
-#else
-    ROS_INFO("Use supersonic wave for height");
-#endif
+
+    ROS_INFO("Use supersonic wave for height, now_height: %.2lf", current_pos_raw.z);
     string confirm_input;
     while (confirm_input != "yes"){
         ROS_INFO("Confirm: yes/no");
@@ -235,19 +304,15 @@ int main(int argc, char** argv) {
             return 0;
         }
     }
-
-    
-    // if (!set_local_position()){
-    //     ROS_ERROR("GPS health insufficient - No local frame reference for height. Exiting.");
-    //     return 1;
-    // }
     
     DataLogger dl("search.csv");
     std::vector<std::pair<std::string, std::string> > vn = {
         {"taskTime", "double"},
         {"state", "enum"},
         {"pos", "Point"},
-        {"eulerAngle", "Point"}
+        {"eulerAngle", "Point"},
+        {"trackTime", "double"},
+        {"desiredPoint", "point"}
     };
     dl.initialize(vn);
 
@@ -264,7 +329,28 @@ int main(int argc, char** argv) {
 
 
     ROS_INFO("Start Control State Machine...");
-    toStepTakeoff();
+
+    if (argc > 3) {
+        // get the start state and set the task_state
+        auto start_state = std::string(argv[3]);
+        toStepTakeoff();
+        if (start_state == "takeoff") {
+            toStepTakeoff();
+        }
+        else if (start_state == "search") {
+            toStepSearch();
+        }
+        else if (start_state == "land") {
+            toStepLand();
+        }
+        else if (start_state == "track") {
+            toStepTrack();
+        }
+        else if (start_state == "hold") {
+            toStepHold();
+        }
+    }
+
 
     while (ros::ok()) {
         // std::cout << "\033c" << std::flush;
@@ -293,6 +379,8 @@ int main(int argc, char** argv) {
         dl.log("state", task_state);
         dl.log("pos", current_pos_raw);
         dl.log("eulerAngle", current_euler_angle);
+        dl.log("trackTime", track_time);
+        dl.log("desiredPoint", desired_point);
         dl.newline();
         
         ros::spinOnce();
