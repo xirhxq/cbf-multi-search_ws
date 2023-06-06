@@ -1,0 +1,7 @@
+<launch>
+    <param name="name_ip_dict" value="{'commander': 'tcp://192.168.2.12:5555', 'suav_2': 'tcp://192.168.2.13:5555'}" />
+    <param name="server" value="192.168.2.1" />
+    <node name="zmq_ros_bridge" pkg="zmq_ros_bridge" type="zmq_ros_bridge.py" output="screen">
+        
+    </node>
+</launch>
