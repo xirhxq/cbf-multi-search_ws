@@ -4,21 +4,21 @@
 #include "FlightControl.hpp"
 #include "DataLogger.hpp"
 #define CAMERA_ANGLE 30
-// #define ON_GROUND_TEST
 
 using namespace dji_osdk_ros;
 using namespace std;
 
-typedef enum { TAKEOFF, ASCEND, SEARCH, HOLD, BACK, LAND } ControlState;
+typedef enum { TAKEOFF, ASCEND, SEARCH, HOLD, BACK, LAND, END } ControlState;
 ControlState task_state;
 vector<geometry_msgs::Vector3> search_tra;
 size_t search_tra_cnt;
 double hold_begin_time, ascend_begin_time;
-DataLogger dl("search.csv");
+double task_begin_time, task_time;
 
 
 void toStepTakeoff(){
     task_state = TAKEOFF;
+    task_begin_time = get_time_now();
 }
 
 void toStepAscend(){
@@ -38,6 +38,10 @@ void toStepHold(){
 
 void toStepLand(){
     task_state = LAND;
+}
+
+void toStepEnd() {
+    task_state = END;
 }
 
 void StepTakeoff() {
@@ -65,7 +69,7 @@ void StepAscend(){
 
 void StepSearch() {
     ROS_INFO("###----StepSearch(Ground)----###");
-    double tol = 0.2;
+    double tol = 0.3;
     geometry_msgs::Vector3 desired_point;
     MyDataFun::set_value(desired_point, search_tra[search_tra_cnt]);
     ROS_INFO("Go to %s(%ld th)", MyDataFun::output_str(desired_point).c_str(), search_tra_cnt);
@@ -97,6 +101,9 @@ void StepLand() {
     ROS_INFO("###----StepLand----###");
     ROS_INFO("Landing...");
     takeoff_land(dji_osdk_ros::DroneTaskControl::Request::TASK_LAND);
+    if (MyMathFun::nearly_is(current_pos_raw.z, 0.0, 0.2)) {
+        toStepEnd();
+    }
     // task_state = BACK;
 }
 
@@ -123,7 +130,6 @@ void ControlStateMachine() {
             break;
         }
         default: {
-            StepHold();
             break;
         }
     }
@@ -133,12 +139,22 @@ int main(int argc, char** argv) {
     ros::init(argc, argv, "mbzirc_demo_search", ros::init_options::AnonymousName);
     ros::NodeHandle nh;
 
-    std::vector<std::pair<std::string, std::string> > vn = {
-        {"ros_time", "double"},
-        {"state", "enum"},
-        {"pos", "Point"},
-    };
-    dl.initialize(vn);
+    if (argc <= 2) {
+        ROS_ERROR("Required more than 2 parameters, quitting...");
+        return 0;
+    }
+
+    bool ON_GROUND = true;
+    if (argc > 2) {
+        auto on_ground = std::string(argv[2]);
+        if (on_ground == "false" || on_ground == "takeoff") {
+            ON_GROUND = false;
+            ROS_WARN("WILL TAKE OFF!!!!");
+        }
+        else {
+            ROS_WARN("ON GROUND TEST!!!");
+        }
+    }
     
 	string uav_name = "none";
 	if (argc > 1) {
@@ -196,13 +212,11 @@ int main(int argc, char** argv) {
     MyDataFun::set_value(position_offset, current_pos_raw);
     ROS_INFO("Position offset: %s", MyDataFun::output_str(position_offset).c_str());
    
-    double y_dir;
-    if (uav_name == "suav_1") y_dir = -1.0;
-    else if (uav_name == "suav_2") y_dir = 1.0; 
-    search_tra.push_back(compensate_offset(MyDataFun::new_point(1, 0.0, 2.0)));
-    search_tra.push_back(compensate_offset(MyDataFun::new_point(1, y_dir, 2.0)));
-    search_tra.push_back(compensate_offset(MyDataFun::new_point(0, y_dir, 2.0)));
-    search_tra.push_back(compensate_offset(MyDataFun::new_point(0.0, 0.0, 2.0)));
+    double x_dir = 1.0, y_dir = -1.0, z_height = 1.4; 
+    search_tra.push_back(compensate_offset(MyDataFun::new_point(x_dir, 0.0, z_height)));
+    search_tra.push_back(compensate_offset(MyDataFun::new_point(x_dir, y_dir, z_height)));
+    search_tra.push_back(compensate_offset(MyDataFun::new_point(0, y_dir, z_height)));
+    search_tra.push_back(compensate_offset(MyDataFun::new_point(0.0, 0.0, z_height)));
 
     ROS_INFO("Search Trajectory:");
     for (auto a: search_tra){
@@ -228,6 +242,14 @@ int main(int argc, char** argv) {
     //     return 1;
     // }
     
+    DataLogger dl("search.csv");
+    std::vector<std::pair<std::string, std::string> > vn = {
+        {"taskTime", "double"},
+        {"state", "enum"},
+        {"pos", "Point"},
+        {"eulerAngle", "Point"}
+    };
+    dl.initialize(vn);
 
     ROS_INFO("Waiting for command to take off...");
     sleep(3);
@@ -235,10 +257,10 @@ int main(int argc, char** argv) {
     //     ros::spinOnce();
     //     rate.sleep();
     // }
-    #ifndef ON_GROUND_TEST
-    obtain_control();
-    monitoredTakeoff();
-    #endif
+    if (!ON_GROUND) {
+        obtain_control();
+        monitoredTakeoff();
+    }
 
 
     ROS_INFO("Start Control State Machine...");
@@ -246,25 +268,31 @@ int main(int argc, char** argv) {
 
     while (ros::ok()) {
         // std::cout << "\033c" << std::flush;
+        task_time = get_time_now() - task_begin_time;
         ROS_INFO("-----------");
+        ROS_INFO("Time: %lf", task_time);
         ROS_INFO("M210(State: %d) @ %s", task_state, MyDataFun::output_str(current_pos_raw).c_str());
         // ROS_INFO("Gimbal %s", MyDataFun::output_str(current_gimbal_angle).c_str());
         ROS_INFO("Attitude (R%.2lf, P%.2lf, Y%.2lf) / deg", current_euler_angle.x * RAD2DEG_COE,
                                                     current_euler_angle.y * RAD2DEG_COE,
                                                     current_euler_angle.z * RAD2DEG_COE);
-    #ifndef ON_GROUND_TEST
-        if (EMERGENCY){
-            M210_hold_ctrl();
-            printf("!!!!!!!!!!!!EMERGENCY!!!!!!!!!!!!\n");
-        }
-        else {
-            ControlStateMachine();
-        }
-    #endif
+        // if (!ON_GROUND) {
+            if (EMERGENCY) {
+                M210_hold_ctrl();
+                printf("!!!!!!!!!!!!EMERGENCY!!!!!!!!!!!!\n");
+            }
+            else {
+                ControlStateMachine();
+                if (task_state == END) {
+                    break;
+                }
+            }
+        // }
 
-        dl.log("ros_time", get_time_now());
+        dl.log("taskTime", task_time);
         dl.log("state", task_state);
         dl.log("pos", current_pos_raw);
+        dl.log("eulerAngle", current_euler_angle);
         dl.newline();
         
         ros::spinOnce();
