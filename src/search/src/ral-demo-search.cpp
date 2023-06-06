@@ -15,7 +15,8 @@ size_t search_tra_cnt;
 double hold_begin_time, ascend_begin_time;
 double task_begin_time, task_time;
 double track_begin_time, track_time;
-int track_tra_cnt;
+std::vector<std::pair<double, Point>> tracking_tra;
+size_t track_tra_cnt;
 Point desired_point;
 
 
@@ -187,19 +188,21 @@ void ControlStateMachine() {
     }
 }
 
-std::vector<std::pair<double, Point>> tracking_tra;
 bool load_search_tra(std::string name) {
-    std::ifstream fin(std::string(ROOT_DIR) + "/config/online_tra" + name + ".txt");
+    std::ifstream fin(std::string(ROOT_DIR) + "/config/online_tra_" + name + ".txt");
     if (!fin.is_open()) {
-        ROS_ERROR("Cannot open search_tra.txt");
+        ROS_ERROR("Cannot open %s/config/online_tra_%s.txt", std::string(ROOT_DIR).c_str(), name.c_str());
         return false;
     }
     double t, x, y, z;
     while (fin >> t >> x >> y >> z) {
-        tracking_tra.push_back(std::make_pair(t, Point(x, y, z)));
+        tracking_tra.push_back(std::make_pair(t, compensate_position_offset(MyDataFun::new_point(x, y, z))));
     }
     fin.close();
     ROS_INFO("Load search_tra.txt successfully");
+    for (auto tra: tracking_tra) {
+        ROS_INFO("Time: %.2lf Position: %s", tra.first, MyDataFun::output_str(tra.second).c_str());
+    }
     return true;
 }
 
@@ -232,10 +235,6 @@ int main(int argc, char** argv) {
         ROS_ERROR("Invalid vehicle name: %s", uav_name.c_str());
     }
 	ROS_INFO("Vehicle name: %s", uav_name.c_str());
-
-    if (!load_search_tra(uav_name)) {
-        return 0;
-    }
 
     ros::Subscriber attitudeSub =
         nh.subscribe(uav_name + "/dji_osdk_ros/attitude", 10, &attitude_callback);
@@ -293,6 +292,10 @@ int main(int argc, char** argv) {
     ROS_INFO("Search Trajectory:");
     for (auto a: search_tra){
         ROS_INFO("%s", MyDataFun::output_str(a).c_str());
+    }
+
+    if (!load_search_tra(uav_name)) {
+        return 0;
     }
 
     ROS_INFO("Use supersonic wave for height, now_height: %.2lf", current_pos_raw.z);

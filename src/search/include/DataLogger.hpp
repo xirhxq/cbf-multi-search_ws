@@ -120,7 +120,7 @@ struct is_eigen_matrix<Eigen::Matrix<T, R, C>> : std::true_type {
 class DataLogger {
 public:
     DataLogger(const std::string &filename) :
-            filename_(std::string(ROOT_DIR) + getCurrentTimestamp("-") + "_" + filename),
+            filename_(std::string(ROOT_DIR) + "data/" + getCurrentTimestamp("-") + "_" + filename),
             initialized_(false) {
         file_.open(filename_);
         while (!file_.is_open()) {
