@@ -46,6 +46,9 @@
         variableInfo.emplace_back("array[3]", "array"); // start from 0, length 3
         variableInfo.emplace_back("anotherArray[3-5]", "array"); // start from 3, length 2
 
+        // vector support
+        variableInfo.emplace_back("array2[1-4]", "vector");
+
         logger.initialize(variableInfo);
 
         for (int i = 0; i < 10; ++i) {
@@ -57,6 +60,7 @@
             c << 100 * i, 200 * i, 300 * i;
             int array[5] = {1 * i, 2 * i, 3 * i, 4 * i, 5 * i};
             bool flag = i % 2;
+            std::vector<double> array2 = {0, 1.0 * i, 2.0 * i, 3.0 * i};
 
             logger.log("var1", var1);
             logger.log("var2", var2);
@@ -72,24 +76,25 @@
             logger.log("array", array);
             logger.log("anotherArray", array);
             logger.log("point", point);
+            logger.log("array2", array2);
 
             // call .newline() to record values in file
             logger.newline();
         }
     }
 
-    --- Output (data/2023-06-05-11-49-55-420_data.csv) ---
-    Year, Month, Day, Hour, Minute, Second, Millisecond, var1, var2, flag, state, a[0][0], a[0][1], a[1][0], a[1][1], a[2][0], a[2][1], b[0][0], b[1][0], b[2][0], c[0][0], c[1][0], c[2][0], point.x, point.y, point.z, array[0], array[1], array[2], anotherArray[3], anotherArray[4]
-    2023, 06, 05, 11, 49, 55, 421, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-    2023, 06, 05, 11, 49, 55, 421, 1, 3.14159, 1, 4, 1, 2, 3, 4, 5, 6, 10, 20, 30, 100, 200, 300, 1, 2, -3, 1, 2, 3, 4, 5
-    2023, 06, 05, 11, 49, 55, 421, 2, 6.28319, 0, 4, 2, 4, 6, 8, 10, 12, 20, 40, 60, 200, 400, 600, 2, 4, -6, 2, 4, 6, 8, 10
-    2023, 06, 05, 11, 49, 55, 421, 3, 9.42478, 1, 4, 3, 6, 9, 12, 15, 18, 30, 60, 90, 300, 600, 900, 3, 6, -9, 3, 6, 9, 12, 15
-    2023, 06, 05, 11, 49, 55, 422, 4, 12.5664, 0, 4, 4, 8, 12, 16, 20, 24, 40, 80, 120, 400, 800, 1200, 4, 8, -12, 4, 8, 12, 16, 20
-    2023, 06, 05, 11, 49, 55, 422, 5, 15.708, 1, 4, 5, 10, 15, 20, 25, 30, 50, 100, 150, 500, 1000, 1500, 5, 10, -15, 5, 10, 15, 20, 25
-    2023, 06, 05, 11, 49, 55, 422, 6, 18.8496, 0, 4, 6, 12, 18, 24, 30, 36, 60, 120, 180, 600, 1200, 1800, 6, 12, -18, 6, 12, 18, 24, 30
-    2023, 06, 05, 11, 49, 55, 422, 7, 21.9911, 1, 4, 7, 14, 21, 28, 35, 42, 70, 140, 210, 700, 1400, 2100, 7, 14, -21, 7, 14, 21, 28, 35
-    2023, 06, 05, 11, 49, 55, 422, 8, 25.1327, 0, 4, 8, 16, 24, 32, 40, 48, 80, 160, 240, 800, 1600, 2400, 8, 16, -24, 8, 16, 24, 32, 40
-    2023, 06, 05, 11, 49, 55, 422, 9, 28.2743, 1, 4, 9, 18, 27, 36, 45, 54, 90, 180, 270, 900, 1800, 2700, 9, 18, -27, 9, 18, 27, 36, 45
+    --- Output (data/2023-07-14-16-37-32-127_data.csv) ---
+    Year, Month, Day, Hour, Minute, Second, Millisecond, var1, var2, flag, state, a[0][0], a[0][1], a[1][0], a[1][1], a[2][0], a[2][1], b[0][0], b[1][0], b[2][0], c[0][0], c[1][0], c[2][0], point.x, point.y, point.z, array[0], array[1], array[2], anotherArray[3], anotherArray[4], array2[1], array2[2], array2[3]
+    2023, 07, 14, 16, 37, 32, 128, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    2023, 07, 14, 16, 37, 32, 128, 1, 3.14159, 1, 4, 1, 2, 3, 4, 5, 6, 10, 20, 30, 100, 200, 300, 1, 2, -3, 1, 2, 3, 4, 5, 1, 2, 3
+    2023, 07, 14, 16, 37, 32, 128, 2, 6.28319, 0, 4, 2, 4, 6, 8, 10, 12, 20, 40, 60, 200, 400, 600, 2, 4, -6, 2, 4, 6, 8, 10, 2, 4, 6
+    2023, 07, 14, 16, 37, 32, 128, 3, 9.42478, 1, 4, 3, 6, 9, 12, 15, 18, 30, 60, 90, 300, 600, 900, 3, 6, -9, 3, 6, 9, 12, 15, 3, 6, 9
+    2023, 07, 14, 16, 37, 32, 128, 4, 12.5664, 0, 4, 4, 8, 12, 16, 20, 24, 40, 80, 120, 400, 800, 1200, 4, 8, -12, 4, 8, 12, 16, 20, 4, 8, 12
+    2023, 07, 14, 16, 37, 32, 128, 5, 15.708, 1, 4, 5, 10, 15, 20, 25, 30, 50, 100, 150, 500, 1000, 1500, 5, 10, -15, 5, 10, 15, 20, 25, 5, 10, 15
+    2023, 07, 14, 16, 37, 32, 128, 6, 18.8496, 0, 4, 6, 12, 18, 24, 30, 36, 60, 120, 180, 600, 1200, 1800, 6, 12, -18, 6, 12, 18, 24, 30, 6, 12, 18
+    2023, 07, 14, 16, 37, 32, 128, 7, 21.9911, 1, 4, 7, 14, 21, 28, 35, 42, 70, 140, 210, 700, 1400, 2100, 7, 14, -21, 7, 14, 21, 28, 35, 7, 14, 21
+    2023, 07, 14, 16, 37, 32, 128, 8, 25.1327, 0, 4, 8, 16, 24, 32, 40, 48, 80, 160, 240, 800, 1600, 2400, 8, 16, -24, 8, 16, 24, 32, 40, 8, 16, 24
+    2023, 07, 14, 16, 37, 32, 128, 9, 28.2743, 1, 4, 9, 18, 27, 36, 45, 54, 90, 180, 270, 900, 1800, 2700, 9, 18, -27, 9, 18, 27, 36, 45, 9, 18, 27
 
 */
 
@@ -115,6 +120,14 @@ struct is_eigen_matrix : std::false_type {
 
 template<typename T, int R, int C>
 struct is_eigen_matrix<Eigen::Matrix<T, R, C>> : std::true_type {
+};
+
+template<typename>
+struct is_vector : std::false_type {
+};
+
+template<typename T, typename A>
+struct is_vector<std::vector<T, A>> : std::true_type {
 };
 
 class DataLogger {
@@ -166,6 +179,7 @@ public:
     typename std::enable_if<!is_eigen_matrix<T>::value &&
                             !std::is_arithmetic<T>::value &&
                             !std::is_enum<T>::value &&
+                            !is_vector<T>::value &&
                             !std::is_array<T>::value>::type
     log(const std::string &variableName, const T &value) {
         parsePointValue(variableName, value);
@@ -175,6 +189,12 @@ public:
     typename std::enable_if<std::is_array<T>::value>::type
     log(const std::string &variableName, const T &value) {
         parseArrayValue(variableName, value);
+    }
+
+    template<typename T>
+    typename std::enable_if<is_vector<T>::value>::type
+    log(const std::string &variableName, const T &value) {
+        parseVectorValue(variableName, value);
     }
 
     void newline() {
@@ -235,6 +255,27 @@ private:
         }
     }
 
+    std::pair<int, int> getStartEndFromStr(const std::string &str) {
+        int startPos, endPos;
+        if (str.find('-') != std::string::npos) {
+            startPos = std::stoi(str.substr(
+                    str.find('[') + 1,
+                    str.find('-') - str.find(']') - 1
+            ));
+            endPos = std::stoi(str.substr(
+                    str.find('-') + 1,
+                    str.find(']') - str.find('-') - 1
+            ));
+        } else {
+            startPos = 0;
+            endPos = std::stoi(str.substr(
+                    str.find('[') + 1,
+                    str.find(']') - str.find('[') - 1
+            ));
+        }
+        return {startPos, endPos};
+    }
+
     void parseVariableName(const std::string &variableName, const std::string &variableType) {
         if (variableType == "int" || variableType == "double"
             || variableType == "enum" || variableType == "bool") {
@@ -266,30 +307,17 @@ private:
             variableNames_.push_back(variableName + ".y");
             variableNames_.push_back(variableName + ".z");
         } else if (variableType.find("array") != std::string::npos ||
-                   variableType.find("Array") != std::string::npos) {
+                   variableType.find("Array") != std::string::npos ||
+                   variableType.find("vector") != std::string::npos ||
+                   variableType.find("Vector") != std::string::npos) {
             nameTypeMap[variableName] = variableType;
             std::string name = variableName.substr(0, variableName.find_first_of('['));
-
-            int startPos, endPos;
-            if (variableName.find('-') != std::string::npos) {
-                startPos = std::stoi(variableName.substr(
-                        variableName.find('[') + 1,
-                        variableName.find('-') - variableName.find(']') - 1
-                ));
-                endPos = std::stoi(variableName.substr(
-                        variableName.find('-') + 1,
-                        variableName.find(']') - variableName.find('-') - 1
-                ));
-            } else {
-                startPos = 0;
-                endPos = std::stoi(variableName.substr(
-                        variableName.find('[') + 1,
-                        variableName.find(']') - variableName.find('[') - 1
-                ));
-
-            }
-            arrayNameStartEndMap[name] = {startPos, endPos};
-            for (int i = startPos; i < endPos; ++i) {
+            auto startEnd = getStartEndFromStr(variableName.substr(
+                    variableName.find_first_of('['),
+                    variableName.find_last_of(']') - variableName.find_first_of('[') + 1
+            ));
+            arrayNameStartEndMap[name] = startEnd;
+            for (int i = startEnd.first; i < startEnd.second; ++i) {
                 std::string varName = name + "[" + std::to_string(i) + "]";
                 variableNames_.push_back(varName);
             }
@@ -342,6 +370,16 @@ private:
              ++i) {
             int index = findIndex(variableName + "[" + std::to_string(i) + "]");
             updateValue(index, getValStr(array[i]));
+        }
+    }
+
+    template<typename T>
+    void parseVectorValue(const std::string &variableName, const T &vector) {
+        for (int i = arrayNameStartEndMap[variableName].first;
+             i < arrayNameStartEndMap[variableName].second;
+             ++i) {
+            int index = findIndex(variableName + "[" + std::to_string(i) + "]");
+            updateValue(index, getValStr(vector[i]));
         }
     }
 
